@@ -6,6 +6,10 @@ COPY package.json package-lock.json ./
 RUN npm ci
 COPY tsconfig.json tsconfig.build.json ./
 COPY src ./src
+COPY styles ./styles
+# public/ is copied into the builder because `npm run build` generates app.css into it;
+# the runtime stage then takes the whole directory back out.
+COPY public ./public
 RUN npm run build
 
 FROM node:24-alpine AS runtime
@@ -17,8 +21,8 @@ RUN npm ci --omit=dev && npm cache clean --force
 
 COPY --from=builder /app/dist ./dist
 # serveStatic resolves `root` against the working directory, so public/ must sit
-# directly under WORKDIR.
-COPY public ./public
+# directly under WORKDIR. Taken from the builder so the generated CSS comes with it.
+COPY --from=builder /app/public ./public
 
 USER node
 EXPOSE 3000

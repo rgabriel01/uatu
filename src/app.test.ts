@@ -11,7 +11,7 @@ describe('GET /', () => {
     const body = await res.text()
     expect(body).toContain('<!DOCTYPE html>')
     expect(body).toContain('<title>uatu</title>')
-    expect(body).toContain('<main id="app">')
+    expect(body).toContain('id="app"')
   })
 
   it('returns a bare fragment when HTMX asks for one', async () => {
@@ -20,7 +20,7 @@ describe('GET /', () => {
     expect(res.status).toBe(200)
 
     const body = await res.text()
-    expect(body).toContain('<main id="app">')
+    expect(body).toContain('id="app"')
     // The whole point of the fragment path: no document wrapper to nest.
     expect(body).not.toContain('<html')
     expect(body).not.toContain('<!DOCTYPE')

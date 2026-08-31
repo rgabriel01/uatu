@@ -4,11 +4,13 @@
  */
 export function Message(props: { heading: string; detail: string }) {
   return (
-    <main id="app">
-      <h1>{props.heading}</h1>
-      <p>{props.detail}</p>
-      <p>
-        <a href="/">Back to the home page</a>
+    <main id="app" class="mx-auto max-w-2xl px-6 py-12">
+      <h1 class="text-3xl font-semibold tracking-tight">{props.heading}</h1>
+      <p class="mt-2 text-neutral-500 dark:text-neutral-400">{props.detail}</p>
+      <p class="mt-6">
+        <a href="/" class="text-accent underline dark:text-accent-dark">
+          Back to the home page
+        </a>
       </p>
     </main>
   )

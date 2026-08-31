@@ -4,3 +4,5 @@ dist
 .github
 docs
 *.log
+# Regenerated inside the image; never copy a stale local build in.
+public/app.css

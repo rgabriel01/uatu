@@ -7,8 +7,10 @@
     "node": ">=22"
   },
   "scripts": {
-    "dev": "tsx watch src/server.ts",
-    "build": "tsc -p tsconfig.build.json",
+    "dev": "concurrently -n server,css -c blue,magenta \"tsx watch src/server.ts\" \"npm run dev:css\"",
+    "dev:css": "tailwindcss -i styles/app.css -o public/app.css --watch",
+    "build": "npm run build:css && tsc -p tsconfig.build.json",
+    "build:css": "tailwindcss -i styles/app.css -o public/app.css --minify",
     "start": "node dist/server.js",
     "test": "vitest run",
     "test:watch": "vitest",
@@ -19,7 +21,10 @@
     "hono": "^4.13.5"
   },
   "devDependencies": {
+    "@tailwindcss/cli": "^4.3.3",
     "@types/node": "^26.4.0",
+    "concurrently": "^10.0.5",
+    "tailwindcss": "^4.3.3",
     "tsx": "^4.23.13",
     "typescript": "^7.0.2",
     "vitest": "^4.1.11"

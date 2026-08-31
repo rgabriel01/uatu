@@ -1,0 +1,10 @@
+@import "tailwindcss";
+
+/* Tailwind v4 auto-detects sources relative to this file; declaring it explicitly
+   means the scan does not depend on where the CLI is invoked from. */
+@source "../src";
+
+@theme {
+  --color-accent: #2f6f4e;
+  --color-accent-dark: #7fc6a0;
+}

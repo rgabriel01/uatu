@@ -145,9 +145,11 @@ Docker image to catch Dockerfile breakage without publishing it anywhere.
 
 ## Explicitly out of scope
 
-Authentication, sessions, database, logging framework, metrics, rate limiting, and a CSS
-framework. Each is a real decision that deserves its own design when there is a concrete
-need driving it.
+Authentication, sessions, database, logging framework, metrics, and rate limiting. Each is
+a real decision that deserves its own design when there is a concrete need driving it.
+
+A CSS framework was originally out of scope here; Tailwind v4 was added afterwards on
+request. See the Styling section of the README.
 
 ## Implementation notes
 
