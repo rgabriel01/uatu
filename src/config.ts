@@ -1,3 +1,6 @@
+import { homedir } from 'node:os'
+import { isAbsolute } from 'node:path'
+
 export type NodeEnv = 'development' | 'production' | 'test'
 
 export interface Config {
@@ -5,9 +8,12 @@ export interface Config {
   readonly host: string
   readonly nodeEnv: NodeEnv
   readonly isProduction: boolean
+  readonly imageDir: string
 }
 
 const NODE_ENVS: readonly NodeEnv[] = ['development', 'production', 'test']
+
+const DEFAULT_IMAGE_SUBPATH = 'Desktop/_stuff/_test/_source'
 
 /**
  * Kept pure and exported separately from `config` so it can be tested directly
@@ -21,7 +27,26 @@ export function loadConfig(env: Readonly<Record<string, string | undefined>>): C
     host: env.HOST ?? '0.0.0.0',
     nodeEnv,
     isProduction: nodeEnv === 'production',
+    imageDir: parseImageDir(env.IMAGE_DIR, env.HOME ?? homedir()),
   }
+}
+
+/** Expands a leading `~/`, which shells resolve but `process.env` hands over literally. */
+export function expandHome(raw: string, home: string): string {
+  return raw.startsWith('~/') ? `${home}/${raw.slice(2)}` : raw
+}
+
+function parseImageDir(raw: string | undefined, home: string): string {
+  if (raw === undefined || raw === '') {
+    return `${home}/${DEFAULT_IMAGE_SUBPATH}`
+  }
+  const expanded = expandHome(raw, home)
+  if (!isAbsolute(expanded)) {
+    throw new Error(
+      `Invalid IMAGE_DIR: expected an absolute path or one starting with ~/, got ${JSON.stringify(raw)}`,
+    )
+  }
+  return expanded
 }
 
 function parsePort(raw: string | undefined): number {

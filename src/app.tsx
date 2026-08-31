@@ -3,7 +3,8 @@ import { Hono } from 'hono'
 import { config } from './config.js'
 import { renderPage } from './render.js'
 import { health } from './routes/health.js'
-import { home } from './routes/home.js'
+import { gallery } from './routes/gallery.js'
+import { images } from './routes/images.js'
 import { Message } from './views/Message.js'
 
 /**
@@ -23,7 +24,8 @@ app.use(
 )
 
 app.route('/', health)
-app.route('/', home)
+app.route('/', images)
+app.route('/', gallery)
 
 app.notFound((c) =>
   renderPage(
