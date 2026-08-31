@@ -161,36 +161,41 @@ describe('lightbox markup contract', () => {
   })
 })
 
-describe('slideshow settings markup contract', () => {
-  it('renders a cog button that opens the settings dialog', async () => {
+describe('cog menu markup contract', () => {
+  it('renders a cog button that opens the menu', async () => {
     const body = await (await gallery.request('/')).text()
 
     expect(body).toContain('id="settings-open"')
-    expect(body).toContain('aria-label="Slideshow settings"')
+    expect(body).toContain('aria-label="Settings"')
   })
 
-  it('renders the settings dialog with a save action', async () => {
+  it('renders a menu offering Interval and Tags', async () => {
     const body = await (await gallery.request('/')).text()
 
-    expect(body).toContain('id="settings"')
-    expect(body).toContain('id="settings-save"')
-    expect(body).toContain('value="save"')
+    expect(body).toContain('id="settings-menu"')
+    expect(body).toContain('id="menu-interval"')
+    expect(body).toContain('id="menu-tags"')
   })
 
-  it('defaults the interval input to 6 seconds', async () => {
-    const body = await (await gallery.request('/')).text()
-    const input = body.match(/<input id="interval-input"[^>]*>/)
-
-    expect(input).not.toBeNull()
-    expect(input![0]).toContain('value="6"')
-  })
-
-  it('bounds the interval input to a sane range', async () => {
+  it('renders the interval dialog, defaulting to 6 seconds', async () => {
     const body = await (await gallery.request('/')).text()
     const input = body.match(/<input id="interval-input"[^>]*>/)![0]
 
-    expect(input).toContain('type="number"')
+    expect(input).toContain('value="6"')
     expect(input).toContain('min="1"')
     expect(input).toContain('max="60"')
+  })
+
+  it('renders an empty tags dialog for HTMX to fill', async () => {
+    const body = await (await gallery.request('/')).text()
+
+    expect(body).toContain('id="tags-dialog"')
+    expect(body).toContain('id="tags-dialog-body"')
+  })
+
+  it('renders a tag panel host inside the lightbox', async () => {
+    const body = await (await gallery.request('/')).text()
+
+    expect(body).toContain('id="lightbox-tags"')
   })
 })

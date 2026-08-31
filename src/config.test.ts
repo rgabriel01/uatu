@@ -9,6 +9,7 @@ describe('loadConfig', () => {
       nodeEnv: 'development',
       isProduction: false,
       imageDir: '/home/someone/Desktop/_stuff/_test/_source',
+      dbPath: './data/uatu.db',
     })
   })
 
@@ -55,6 +56,18 @@ describe('imageDir', () => {
   it('rejects a relative IMAGE_DIR', () => {
     expect(() => loadConfig({ HOME: '/home/someone', IMAGE_DIR: 'images' })).toThrow(
       /Invalid IMAGE_DIR/,
+    )
+  })
+})
+
+describe('dbPath', () => {
+  it('defaults to a data directory beside the working directory', () => {
+    expect(loadConfig({ HOME: '/home/someone' }).dbPath).toBe('./data/uatu.db')
+  })
+
+  it('honours DB_PATH', () => {
+    expect(loadConfig({ HOME: '/home/someone', DB_PATH: '/srv/uatu.db' }).dbPath).toBe(
+      '/srv/uatu.db',
     )
   })
 })

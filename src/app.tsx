@@ -5,6 +5,7 @@ import { renderPage } from './render.js'
 import { health } from './routes/health.js'
 import { gallery } from './routes/gallery.js'
 import { images } from './routes/images.js'
+import { tags } from './routes/tags.js'
 import { Message } from './views/Message.js'
 
 /**
@@ -25,6 +26,7 @@ app.use(
 
 app.route('/', health)
 app.route('/', images)
+app.route('/', tags)
 app.route('/', gallery)
 
 app.notFound((c) =>
