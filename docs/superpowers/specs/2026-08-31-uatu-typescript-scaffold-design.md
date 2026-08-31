@@ -43,16 +43,17 @@ not type syntax, so `.tsx` files must be transformed. `tsx` handles this in deve
 
 ```
 src/
-  app.ts            Builds and exports the Hono app. Does not listen.
+  app.tsx           Builds and exports the Hono app. Does not listen.
   server.ts         Entry point. Imports app, binds HOST:PORT.
   config.ts         Env parsing with defaults. Throws at startup on invalid input.
   render.tsx        renderPage() — chooses full page vs bare fragment.
   routes/
-    home.ts         GET /
+    home.tsx        GET /
     health.ts       GET /health
   views/
     Layout.tsx      HTML shell: head, vendored htmx script, children slot.
     Home.tsx        Home page body.
+    Message.tsx     Shared shell for 404 and 500 responses.
 public/
   styles.css
   vendor/htmx.min.js
@@ -61,9 +62,9 @@ Dockerfile
 .github/workflows/ci.yml
 ```
 
-### Why `app.ts` and `server.ts` are separate
+### Why `app.tsx` and `server.ts` are separate
 
-`app.ts` exports a configured Hono app that has never bound a port. `server.ts` is the only
+`app.tsx` exports a configured Hono app that has never bound a port. `server.ts` is the only
 file that listens. This is the entire testing strategy: Vitest calls `app.request('/')`
 against the app object directly, so tests open no sockets, need no supertest, and cannot
 flake on port collisions or teardown races.
@@ -72,7 +73,7 @@ flake on port collisions or teardown races.
 
 1. Request enters the Hono router.
 2. The matched handler builds a JSX view.
-3. `renderPage(c, <Home />)` inspects the `HX-Request` header:
+3. `renderPage(c, title, <Home />)` inspects the `HX-Request` header:
    - absent → wrap in `Layout` and return a full HTML document
    - present → return the bare fragment
 4. Hono's JSX renderer produces an HTML string; the handler returns it via `c.html()`.
@@ -91,8 +92,10 @@ matters because retrofitting the fragment branch later means editing every route
 
 ## Configuration
 
-`config.ts` reads and validates at import time, throwing on invalid values so a
-misconfigured deploy fails immediately and loudly rather than 500-ing on first request.
+`config.ts` exports a pure `loadConfig(env)` plus a module-level `config = loadConfig(process.env)`.
+Validation therefore happens at import time -- a misconfigured deploy fails immediately and
+loudly rather than 500-ing on first request -- while `loadConfig` stays directly testable
+against a fabricated environment, without touching real process state.
 
 | Var | Default | Notes |
 | --- | --- | --- |
@@ -124,7 +127,8 @@ with real assertions, not placeholders:
 - `GET /` with `HX-Request: true` returns 200 and a fragment containing no `<html>` tag.
 - `GET /health` returns 200 and JSON with `status: "ok"`.
 - An unknown path returns 404.
-- `config.ts` throws on a non-numeric `PORT`.
+- `loadConfig` throws on a non-numeric `PORT`, an out-of-range `PORT`, and an unknown
+  `NODE_ENV`.
 
 These exist to prove the harness runs and to be the pattern later tests are copied from.
 
@@ -144,3 +148,16 @@ Docker image to catch Dockerfile breakage without publishing it anywhere.
 Authentication, sessions, database, logging framework, metrics, rate limiting, and a CSS
 framework. Each is a real decision that deserves its own design when there is a concrete
 need driving it.
+
+## Implementation notes
+
+Deviations from the design as written, recorded after building it:
+
+- Files containing JSX must carry the `.tsx` extension, so `app.ts` became `app.tsx` and
+  `routes/home.ts` became `routes/home.tsx`. Non-JSX modules stayed `.ts`.
+- `views/Message.tsx` was added as a shared shell for the 404 and 500 responses. It reuses
+  the `#app` id that `Home` uses, so an HTMX swap landing on an error still targets correctly.
+- Hono's JSX renderer does not emit a doctype, so `Layout` prepends one explicitly via
+  `raw('<!DOCTYPE html>')`.
+- `tsconfig.json` needs `types: ["node"]` explicitly; without it `process` and `console` do
+  not resolve. Build exclusions live in `tsconfig.build.json` so `typecheck` still covers tests.
