@@ -99,3 +99,37 @@ export function addTagToImage(db: DatabaseSync, imageName: string, tagId: number
 export function removeTagFromImage(db: DatabaseSync, imageName: string, tagId: number): void {
   db.prepare('DELETE FROM image_tag WHERE image_name = ? AND tag_id = ?').run(imageName, tagId)
 }
+
+/**
+ * Image names carrying EVERY one of `tagNames` (AND, not OR).
+ *
+ * The names are deduplicated first: HAVING compares against the number of distinct
+ * matched tags, so passing the same tag twice would make the required count exceed
+ * what any image can satisfy and silently return nothing.
+ *
+ * An empty selection yields an empty set. Callers wanting "no filter" must skip this
+ * call rather than pass an empty list.
+ */
+export function imageNamesWithAllTags(
+  db: DatabaseSync,
+  tagNames: readonly string[],
+): Set<string> {
+  const unique = [...new Set(tagNames)]
+  if (unique.length === 0) {
+    return new Set()
+  }
+
+  const placeholders = unique.map(() => '?').join(', ')
+  const rows = db
+    .prepare(
+      `SELECT image_tag.image_name AS name
+         FROM image_tag
+         JOIN tag ON tag.id = image_tag.tag_id
+        WHERE tag.name IN (${placeholders})
+        GROUP BY image_tag.image_name
+       HAVING COUNT(DISTINCT tag.id) = ?`,
+    )
+    .all(...unique, unique.length) as unknown as { name: string }[]
+
+  return new Set(rows.map((row) => row.name))
+}

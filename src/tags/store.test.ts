@@ -7,6 +7,7 @@ import {
   addTagToImage,
   createTag,
   deleteTag,
+  imageNamesWithAllTags,
   listTags,
   removeTagFromImage,
   renameTag,
@@ -158,5 +159,55 @@ describe('image associations', () => {
     const tag = createTag(db, 'red-birds')
     addTagToImage(db, 'a.webp', tag.id)
     expect(tagsForImage(db, 'b.webp')).toEqual([])
+  })
+})
+
+describe('imageNamesWithAllTags', () => {
+  beforeEach(() => {
+    const red = createTag(db, 'red-birds')
+    const great = createTag(db, 'great-images')
+    const blue = createTag(db, 'blue-sky')
+    addTagToImage(db, 'a.webp', red.id)
+    addTagToImage(db, 'a.webp', great.id)
+    addTagToImage(db, 'b.webp', red.id)
+    addTagToImage(db, 'c.webp', great.id)
+    addTagToImage(db, 'c.webp', blue.id)
+  })
+
+  it('returns every image carrying a single tag', () => {
+    expect([...imageNamesWithAllTags(db, ['red-birds'])].sort()).toEqual(['a.webp', 'b.webp'])
+  })
+
+  it('requires ALL tags, not any -- this is AND, not OR', () => {
+    expect([...imageNamesWithAllTags(db, ['red-birds', 'great-images'])]).toEqual(['a.webp'])
+  })
+
+  it('narrows further with each additional tag', () => {
+    const one = imageNamesWithAllTags(db, ['great-images'])
+    const two = imageNamesWithAllTags(db, ['great-images', 'blue-sky'])
+
+    expect(one.size).toBe(2)
+    expect(two.size).toBe(1)
+  })
+
+  it('returns nothing for an unknown tag', () => {
+    expect(imageNamesWithAllTags(db, ['nope']).size).toBe(0)
+  })
+
+  it('returns nothing when one of several tags is unknown', () => {
+    expect(imageNamesWithAllTags(db, ['red-birds', 'nope']).size).toBe(0)
+  })
+
+  it('ignores a repeated tag rather than returning nothing', () => {
+    // A naive HAVING COUNT(...) = ? compares against the number of bound
+    // parameters, so a duplicate silently breaks a legitimate filter.
+    expect([...imageNamesWithAllTags(db, ['red-birds', 'red-birds'])].sort()).toEqual([
+      'a.webp',
+      'b.webp',
+    ])
+  })
+
+  it('returns an empty set for an empty selection -- callers must skip instead', () => {
+    expect(imageNamesWithAllTags(db, []).size).toBe(0)
   })
 })

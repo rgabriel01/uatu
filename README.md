@@ -145,6 +145,26 @@ panel holds the slideshow, via `window.uatuSlideshow.pause()`.
 Store functions take the database as their first argument, which is why the tag tests need
 no mocking at all -- they pass an in-memory database directly.
 
+### Filtering by tag
+
+Chips above the grid narrow the gallery. Selecting several tags uses **AND** -- each tag
+added shows fewer images, not more. The selection appears in the page URL
+(`/?tag=red-birds&tag=great-images`), so a filtered view is shareable and survives a
+reload. The shuffle seed is deliberately *not* in the URL: reloading keeps your filter and
+gives you a fresh order.
+
+Two invariants keep this correct, both learned from the seeded shuffle:
+
+- **Filtering happens before shuffling**, so the permutation is over the filtered list. The
+  other order would make each batch an uneven slice of the unfiltered order.
+- **The selected tags ride in every batch URL.** Without them on the infinite-scroll
+  sentinel, batch two would come from the unfiltered catalog -- correct on the first screen,
+  wrong on the second.
+
+Tag selections are deduplicated before querying. The AND query counts distinct matched
+tags against the number requested, so a repeated `?tag=` would otherwise make a valid
+filter return nothing.
+
 **In Docker, mount a volume at `/app/data`** or tags are lost when the container is
 replaced.
 
