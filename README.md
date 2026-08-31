@@ -105,8 +105,22 @@ traversal attempts 404 rather than being sanitized.
 Partials live on their own routes rather than being branched out of `/` by the
 `HX-Request` header. `renderPage` still uses that header for pages and error responses.
 
-The lightbox is `public/lightbox.js` -- plain DOM against a native `<dialog>`. Tests cover
-the markup contract it depends on; the interactive behaviour needs a browser to verify.
+### Viewer and slideshow
+
+Clicking a tile opens a full-size overlay, which then advances automatically every N
+seconds. Arrow keys move manually and reset the timer; Escape or a backdrop click closes
+the overlay and stops it. The slideshow wraps around the currently-loaded tiles rather
+than stopping at the end.
+
+The cog in the header opens a settings dialog for the interval. It defaults to **6
+seconds**, is bounded to 1-60, and persists in `localStorage` under
+`uatu:slideshow-interval` -- a per-browser setting, since the app has no database. Every
+`localStorage` access is guarded, so private-browsing modes fall back to the default
+rather than breaking the viewer.
+
+All of this lives in `public/lightbox.js` -- plain DOM against two native `<dialog>`
+elements. Tests cover the markup contract these scripts depend on; the interactive
+behaviour needs a browser to verify.
 
 ## Notes
 
