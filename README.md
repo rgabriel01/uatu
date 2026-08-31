@@ -35,6 +35,7 @@ npm run dev      # http://localhost:3000, restarts on change
 | `PORT` | `3000` | Integer, 1-65535 |
 | `HOST` | `0.0.0.0` | Bind address |
 | `NODE_ENV` | `development` | `development`, `production`, or `test` |
+| `IMAGE_DIR` | `~/Desktop/_stuff/_test/_source` | Absolute path, or one starting with `~/` |
 
 Invalid values throw at startup rather than failing on a later request.
 
@@ -81,6 +82,31 @@ between them with conditionals.
 
 `public/app.css` is generated and gitignored. `npm run build` regenerates it, and so does
 the Dockerfile -- never edit it, and never rely on it being present in a fresh checkout.
+
+## Gallery
+
+The app serves a shuffle-able grid of images read from `IMAGE_DIR`.
+
+**The shuffle is seeded, not random per request.** Infinite scroll fetches batches
+separately, so a per-request reorder would repeat some images and omit others. Instead a
+seed is generated once, embedded in every batch URL, and turned into a permutation by
+`src/gallery/shuffle.ts`. Same seed plus same offset always yields the same slice, and
+"shuffle" means "new seed, restart at offset 0".
+
+| Route | Purpose |
+| --- | --- |
+| `GET /` | Gallery page with the first batch |
+| `GET /gallery?seed=&offset=` | Batch fragment; omit `seed` to get a fresh order |
+| `GET /images/:name` | One image file |
+
+`/images/:name` serves a file only if the name is present in the catalog listing, so
+traversal attempts 404 rather than being sanitized.
+
+Partials live on their own routes rather than being branched out of `/` by the
+`HX-Request` header. `renderPage` still uses that header for pages and error responses.
+
+The lightbox is `public/lightbox.js` -- plain DOM against a native `<dialog>`. Tests cover
+the markup contract it depends on; the interactive behaviour needs a browser to verify.
 
 ## Notes
 
