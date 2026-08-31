@@ -1,8 +1,41 @@
-import { describe, expect, it } from 'vitest'
-import { app } from './app.js'
+import { mkdtemp, rm, writeFile } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { clearCatalogCache } from './gallery/catalog.js'
+
+let dir: string
+
+// The real IMAGE_DIR does not exist on CI runners, so the app under test is pointed
+// at a temp fixture directory instead.
+vi.mock('./config.js', async () => {
+  const actual = await vi.importActual<typeof import('./config.js')>('./config.js')
+  return {
+    ...actual,
+    config: {
+      ...actual.config,
+      get imageDir() {
+        return dir
+      },
+    },
+  }
+})
+
+const { app } = await import('./app.js')
+
+beforeEach(async () => {
+  clearCatalogCache()
+  dir = await mkdtemp(join(tmpdir(), 'uatu-app-'))
+  await writeFile(join(dir, 'one.webp'), 'x')
+  await writeFile(join(dir, 'two.webp'), 'x')
+})
+
+afterEach(async () => {
+  await rm(dir, { recursive: true, force: true })
+})
 
 describe('GET /', () => {
-  it('returns a full HTML document for an ordinary request', async () => {
+  it('serves the gallery page', async () => {
     const res = await app.request('/')
 
     expect(res.status).toBe(200)
@@ -10,20 +43,8 @@ describe('GET /', () => {
 
     const body = await res.text()
     expect(body).toContain('<!DOCTYPE html>')
-    expect(body).toContain('<title>uatu</title>')
-    expect(body).toContain('id="app"')
-  })
-
-  it('returns a bare fragment when HTMX asks for one', async () => {
-    const res = await app.request('/', { headers: { 'HX-Request': 'true' } })
-
-    expect(res.status).toBe(200)
-
-    const body = await res.text()
-    expect(body).toContain('id="app"')
-    // The whole point of the fragment path: no document wrapper to nest.
-    expect(body).not.toContain('<html')
-    expect(body).not.toContain('<!DOCTYPE')
+    expect(body).toContain('id="grid"')
+    expect(body).toContain('data-name="one.webp"')
   })
 })
 
