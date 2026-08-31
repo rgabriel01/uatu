@@ -142,3 +142,21 @@ describe('GET /gallery', () => {
     expect(countTiles(body)).toBe(0)
   })
 })
+
+describe('lightbox markup contract', () => {
+  it('renders the dialog and its image element', async () => {
+    const body = await (await gallery.request('/')).text()
+
+    expect(body).toContain('id="lightbox"')
+    expect(body).toContain('id="lightbox-image"')
+  })
+
+  it('gives every tile a data-name for the lightbox to read', async () => {
+    const body = await (await gallery.request('/')).text()
+    const imgTags = (body.match(/<img /g) ?? []).length
+    const named = (body.match(/data-name="/g) ?? []).length
+
+    // The lightbox's own <img> has no data-name, hence the off-by-one.
+    expect(named).toBe(imgTags - 1)
+  })
+})

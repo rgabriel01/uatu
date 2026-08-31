@@ -15,6 +15,7 @@ export function Layout(props: { title: string; children?: Child }) {
           <title>{props.title}</title>
           <link rel="stylesheet" href="/static/app.css" />
           <script src="/static/vendor/htmx.min.js" defer></script>
+          <script src="/static/lightbox.js" defer></script>
         </head>
         <body class="bg-white text-neutral-900 antialiased dark:bg-neutral-900 dark:text-neutral-100">
           {props.children}
