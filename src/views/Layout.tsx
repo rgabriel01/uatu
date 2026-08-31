@@ -13,10 +13,12 @@ export function Layout(props: { title: string; children?: Child }) {
           <meta charset="utf-8" />
           <meta name="viewport" content="width=device-width, initial-scale=1" />
           <title>{props.title}</title>
-          <link rel="stylesheet" href="/static/styles.css" />
+          <link rel="stylesheet" href="/static/app.css" />
           <script src="/static/vendor/htmx.min.js" defer></script>
         </head>
-        <body>{props.children}</body>
+        <body class="bg-white text-neutral-900 antialiased dark:bg-neutral-900 dark:text-neutral-100">
+          {props.children}
+        </body>
       </html>
     </>
   )
