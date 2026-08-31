@@ -23,3 +23,12 @@ export function buildGalleryQuery(params: {
   for (const tag of params.tags) parts.push(`tag=${encodeURIComponent(tag)}`)
   return parts.join('&')
 }
+
+/** Joins a path and query, omitting the `?` when there is nothing to encode. */
+export function galleryUrl(
+  path: string,
+  params: { seed?: number; offset?: number; tags: readonly string[] },
+): string {
+  const query = buildGalleryQuery(params)
+  return query === '' ? path : `${path}?${query}`
+}

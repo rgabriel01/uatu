@@ -3,6 +3,8 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { clearCatalogCache } from '../gallery/catalog.js'
+import { openDatabase } from '../db/index.js'
+import { addTagToImage, createTag } from '../tags/store.js'
 
 let dir: string
 
@@ -19,7 +21,10 @@ vi.mock('../config.js', async () => {
   }
 })
 
-const { gallery, BATCH_SIZE } = await import('./gallery.js')
+const { createGalleryRoutes, BATCH_SIZE } = await import('./gallery.js')
+
+let tagDb: ReturnType<typeof openDatabase>
+let gallery: ReturnType<typeof createGalleryRoutes>
 
 /**
  * Counts tiles by their data-name hook rather than by <img> tags: the page also
@@ -40,6 +45,9 @@ beforeEach(async () => {
   for (let i = 0; i < 150; i++) {
     await writeFile(join(dir, `img-${String(i).padStart(3, '0')}.webp`), 'x')
   }
+
+  tagDb = openDatabase(':memory:')
+  gallery = createGalleryRoutes(() => tagDb)
 })
 
 afterEach(async () => {
@@ -60,7 +68,8 @@ describe('GET /', () => {
     const body = await (await gallery.request('/')).text()
 
     expect(body).toContain('id="grid"')
-    expect(body).toContain('hx-get="/gallery"')
+    // Shuffle re-renders the whole body so the chips and count stay in step.
+    expect(body).toContain('hx-get="/gallery/view"')
   })
 
   it('includes a sentinel pointing at the next offset with a concrete seed', async () => {
@@ -197,5 +206,127 @@ describe('cog menu markup contract', () => {
     const body = await (await gallery.request('/')).text()
 
     expect(body).toContain('id="lightbox-tags"')
+  })
+})
+
+describe('filtering by tag', () => {
+  function tagImages(tagName: string, images: readonly string[]): void {
+    const tag = createTag(tagDb, tagName)
+    for (const image of images) addTagToImage(tagDb, image, tag.id)
+  }
+
+  it('narrows the grid to images carrying the tag', async () => {
+    tagImages('red-birds', ['img-000.webp', 'img-001.webp', 'img-002.webp'])
+
+    const body = await (await gallery.request('/gallery?tag=red-birds&seed=1&offset=0')).text()
+
+    expect(countTiles(body)).toBe(3)
+    expect(namesIn(body).sort()).toEqual(['img-000.webp', 'img-001.webp', 'img-002.webp'])
+  })
+
+  it('narrows further with a second tag -- AND, not OR', async () => {
+    tagImages('red-birds', ['img-000.webp', 'img-001.webp', 'img-002.webp'])
+    tagImages('great-images', ['img-002.webp', 'img-003.webp'])
+
+    const body = await (
+      await gallery.request('/gallery?tag=red-birds&tag=great-images&seed=1&offset=0')
+    ).text()
+
+    expect(namesIn(body)).toEqual(['img-002.webp'])
+  })
+
+  it('keeps the filter across batches -- the regression this design exists to prevent', async () => {
+    const many = Array.from({ length: 90 }, (_, i) => `img-${String(i).padStart(3, '0')}.webp`)
+    tagImages('many', many)
+
+    const first = namesIn(await (await gallery.request('/gallery?tag=many&seed=5&offset=0')).text())
+    const second = namesIn(
+      await (await gallery.request('/gallery?tag=many&seed=5&offset=60')).text(),
+    )
+
+    expect(first).toHaveLength(BATCH_SIZE)
+    expect(second).toHaveLength(30)
+    for (const name of [...first, ...second]) expect(many).toContain(name)
+    expect(new Set([...first, ...second]).size).toBe(90)
+  })
+
+  it('carries the tags on the sentinel URL', async () => {
+    const many = Array.from({ length: 90 }, (_, i) => `img-${String(i).padStart(3, '0')}.webp`)
+    tagImages('many', many)
+
+    const body = await (await gallery.request('/gallery?tag=many&seed=5&offset=0')).text()
+
+    expect(body).toContain('tag=many')
+    expect(body).toContain('offset=60')
+  })
+
+  it('is stable for the same seed and filter', async () => {
+    tagImages('red-birds', ['img-000.webp', 'img-001.webp', 'img-002.webp'])
+
+    const a = await (await gallery.request('/gallery?tag=red-birds&seed=3&offset=0')).text()
+    const b = await (await gallery.request('/gallery?tag=red-birds&seed=3&offset=0')).text()
+
+    expect(namesIn(a)).toEqual(namesIn(b))
+  })
+
+  it('returns nothing for a tag no image carries', async () => {
+    createTag(tagDb, 'unused')
+
+    const body = await (await gallery.request('/gallery?tag=unused&seed=1&offset=0')).text()
+
+    expect(countTiles(body)).toBe(0)
+  })
+
+  it('ignores a repeated tag rather than emptying the result', async () => {
+    tagImages('red-birds', ['img-000.webp', 'img-001.webp'])
+
+    const body = await (
+      await gallery.request('/gallery?tag=red-birds&tag=red-birds&seed=1&offset=0')
+    ).text()
+
+    expect(countTiles(body)).toBe(2)
+  })
+
+  it('shows every image when no tag is selected', async () => {
+    tagImages('red-birds', ['img-000.webp'])
+
+    const body = await (await gallery.request('/gallery?seed=1&offset=0')).text()
+
+    expect(countTiles(body)).toBe(BATCH_SIZE)
+  })
+})
+
+describe('GET /gallery/view', () => {
+  it('returns the gallery body with chips and a count', async () => {
+    createTag(tagDb, 'red-birds')
+
+    const body = await (await gallery.request('/gallery/view?seed=1')).text()
+
+    expect(body).toContain('id="gallery-body"')
+    expect(body).toContain('id="result-count"')
+    expect(body).toContain('red-birds')
+    expect(body).not.toContain('<html')
+  })
+
+  it('reports the filtered count, not the total', async () => {
+    const tag = createTag(tagDb, 'red-birds')
+    addTagToImage(tagDb, 'img-000.webp', tag.id)
+    addTagToImage(tagDb, 'img-001.webp', tag.id)
+
+    const body = await (await gallery.request('/gallery/view?tag=red-birds&seed=1')).text()
+
+    expect(body).toMatch(/2 images/)
+  })
+})
+
+describe('GET / with a filter', () => {
+  it('applies tags from the page URL', async () => {
+    const tag = createTag(tagDb, 'red-birds')
+    addTagToImage(tagDb, 'img-000.webp', tag.id)
+
+    const body = await (await gallery.request('/?tag=red-birds')).text()
+
+    expect(body).toContain('<!DOCTYPE html>')
+    expect(countTiles(body)).toBe(1)
   })
 })

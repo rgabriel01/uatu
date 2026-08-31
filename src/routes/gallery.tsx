@@ -1,19 +1,22 @@
+import type { DatabaseSync } from 'node:sqlite'
 import { Hono } from 'hono'
 import { config } from '../config.js'
+import { getDatabase } from '../db/index.js'
 import { readCatalog } from '../gallery/catalog.js'
+import { parseTagSelection } from '../gallery/filter.js'
 import { randomSeed, shuffled } from '../gallery/shuffle.js'
 import { renderPage } from '../render.js'
+import { imageNamesWithAllTags, listTags } from '../tags/store.js'
 import { Gallery } from '../views/Gallery.js'
+import { GalleryBody } from '../views/GalleryBody.js'
 import { GridBatch } from '../views/GridBatch.js'
 
 /** Images per batch. Small enough for a fast first paint, large enough to fill a screen. */
 export const BATCH_SIZE = 60
 
-export const gallery = new Hono()
-
 /**
  * A missing or malformed seed becomes a fresh one rather than an error: the shuffle
- * button deliberately requests /gallery with no seed to mean "give me a new order".
+ * button deliberately requests without a seed to mean "give me a new order".
  */
 function seedFrom(raw: string | undefined): number {
   if (raw === undefined) return randomSeed()
@@ -26,32 +29,84 @@ function offsetFrom(raw: string | undefined): number {
   return Number.isInteger(parsed) && parsed >= 0 ? parsed : 0
 }
 
-async function batch(seed: number, offset: number) {
-  const catalog = await readCatalog(config.imageDir)
-  const order = shuffled(catalog.names, seed)
-  const names = order.slice(offset, offset + BATCH_SIZE)
-  const nextOffset = offset + BATCH_SIZE < order.length ? offset + BATCH_SIZE : null
+export function createGalleryRoutes(getDb: () => DatabaseSync): Hono {
+  const app = new Hono()
 
-  return { names, nextOffset, total: order.length }
+  /**
+   * Filtering happens BEFORE shuffling so the permutation is over the filtered list.
+   * Shuffling first and filtering after would make each batch an uneven slice of the
+   * unfiltered order.
+   */
+  async function select(seed: number, tags: readonly string[]): Promise<string[]> {
+    const catalog = await readCatalog(config.imageDir)
+
+    let names: readonly string[] = catalog.names
+    if (tags.length > 0) {
+      const allowed = imageNamesWithAllTags(getDb(), tags)
+      names = names.filter((name) => allowed.has(name))
+    }
+
+    return shuffled(names, seed)
+  }
+
+  function batchOf(order: readonly string[], offset: number) {
+    return {
+      names: order.slice(offset, offset + BATCH_SIZE),
+      nextOffset: offset + BATCH_SIZE < order.length ? offset + BATCH_SIZE : null,
+    }
+  }
+
+  app.get('/', async (c) => {
+    const tags = parseTagSelection(c.req.queries('tag') ?? [])
+    const seed = randomSeed()
+    const order = await select(seed, tags)
+    const { names, nextOffset } = batchOf(order, 0)
+
+    return renderPage(
+      c,
+      'uatu',
+      <Gallery activeTags={tags}>
+        <GalleryBody
+          allTags={listTags(getDb())}
+          activeTags={tags}
+          matchCount={order.length}
+          seed={seed}
+        >
+          <GridBatch names={names} seed={seed} nextOffset={nextOffset} tags={tags} />
+        </GalleryBody>
+      </Gallery>,
+    )
+  })
+
+  app.get('/gallery/view', async (c) => {
+    const tags = parseTagSelection(c.req.queries('tag') ?? [])
+    const seed = seedFrom(c.req.query('seed'))
+    const order = await select(seed, tags)
+    const { names, nextOffset } = batchOf(order, 0)
+
+    return c.html(
+      <GalleryBody
+        allTags={listTags(getDb())}
+        activeTags={tags}
+        matchCount={order.length}
+        seed={seed}
+      >
+        <GridBatch names={names} seed={seed} nextOffset={nextOffset} tags={tags} />
+      </GalleryBody>,
+    )
+  })
+
+  app.get('/gallery', async (c) => {
+    const tags = parseTagSelection(c.req.queries('tag') ?? [])
+    const seed = seedFrom(c.req.query('seed'))
+    const offset = offsetFrom(c.req.query('offset'))
+    const order = await select(seed, tags)
+    const { names, nextOffset } = batchOf(order, offset)
+
+    return c.html(<GridBatch names={names} seed={seed} nextOffset={nextOffset} tags={tags} />)
+  })
+
+  return app
 }
 
-gallery.get('/', async (c) => {
-  const seed = randomSeed()
-  const { names, nextOffset, total } = await batch(seed, 0)
-
-  return renderPage(
-    c,
-    'uatu',
-    <Gallery total={total}>
-      <GridBatch names={names} seed={seed} nextOffset={nextOffset} />
-    </Gallery>,
-  )
-})
-
-gallery.get('/gallery', async (c) => {
-  const seed = seedFrom(c.req.query('seed'))
-  const offset = offsetFrom(c.req.query('offset'))
-  const { names, nextOffset } = await batch(seed, offset)
-
-  return c.html(<GridBatch names={names} seed={seed} nextOffset={nextOffset} />)
-})
+export const gallery = createGalleryRoutes(getDatabase)

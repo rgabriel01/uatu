@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { buildGalleryQuery, parseTagSelection } from './filter.js'
+import { buildGalleryQuery, galleryUrl, parseTagSelection } from './filter.js'
 
 describe('parseTagSelection', () => {
   it('keeps valid tag names', () => {
@@ -51,5 +51,18 @@ describe('buildGalleryQuery', () => {
 
   it('escapes tag names', () => {
     expect(buildGalleryQuery({ tags: ['a-b'] })).toBe('tag=a-b')
+  })
+})
+
+describe('galleryUrl', () => {
+  it('joins path and query', () => {
+    expect(galleryUrl('/gallery/view', { seed: 7, tags: ['apple'] })).toBe(
+      '/gallery/view?seed=7&tag=apple',
+    )
+  })
+
+  it('omits the question mark when there is nothing to encode', () => {
+    expect(galleryUrl('/', { tags: [] })).toBe('/')
+    expect(galleryUrl('/gallery/view', { tags: [] })).toBe('/gallery/view')
   })
 })
