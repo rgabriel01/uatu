@@ -36,6 +36,7 @@ npm run dev      # http://localhost:3000, restarts on change
 | `HOST` | `0.0.0.0` | Bind address |
 | `NODE_ENV` | `development` | `development`, `production`, or `test` |
 | `IMAGE_DIR` | `~/Desktop/_stuff/_test/_source` | Absolute path, or one starting with `~/` |
+| `DB_PATH` | `./data/uatu.db` | SQLite file for tags |
 
 Invalid values throw at startup rather than failing on a later request.
 
@@ -121,6 +122,31 @@ rather than breaking the viewer.
 All of this lives in `public/lightbox.js` -- plain DOM against two native `<dialog>`
 elements. Tests cover the markup contract these scripts depend on; the interactive
 behaviour needs a browser to verify.
+
+## Tagging
+
+Tags are kebab-case (`red-birds`, `great-images`), enforced by `src/tags/name.ts` on the
+server -- the input pattern is a convenience, not the control.
+
+Storage is `node:sqlite`, built into Node, so tagging added **no dependencies**. Two
+tables: `tag`, and `image_tag` joining tag ids to image *filenames*. Filenames rather than
+an `image` table means nothing has to be kept in sync with the directory -- a file removed
+from disk simply stops matching.
+
+`PRAGMA foreign_keys = ON` is set on every connection. SQLite leaves it off by default,
+and without it `ON DELETE CASCADE` silently does nothing, so deleting a tag would strand
+its associations.
+
+The cog opens a menu: **Interval** for the slideshow, **Tags** to add, rename, and delete.
+Deleting warns how many images use the tag. Inside the viewer, a panel adds and removes
+tags on the current image; typing a name that does not exist creates it. Focusing that
+panel holds the slideshow, via `window.uatuSlideshow.pause()`.
+
+Store functions take the database as their first argument, which is why the tag tests need
+no mocking at all -- they pass an in-memory database directly.
+
+**In Docker, mount a volume at `/app/data`** or tags are lost when the container is
+replaced.
 
 ## Notes
 

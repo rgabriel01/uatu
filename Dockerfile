@@ -24,6 +24,12 @@ COPY --from=builder /app/dist ./dist
 # directly under WORKDIR. Taken from the builder so the generated CSS comes with it.
 COPY --from=builder /app/public ./public
 
+# The database lives here. Mount a volume over it or tags are lost when the
+# container is replaced: docker run -v uatu-data:/app/data ...
+RUN mkdir -p /app/data && chown node:node /app/data
+ENV DB_PATH=/app/data/uatu.db
+VOLUME /app/data
+
 USER node
 EXPOSE 3000
 
