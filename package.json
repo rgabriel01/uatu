@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "engines": {
-    "node": ">=22"
+    "node": ">=24"
   },
   "scripts": {
     "dev": "concurrently -n server,css -c blue,magenta \"tsx watch src/server.ts\" \"npm run dev:css\"",

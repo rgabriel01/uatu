@@ -6,7 +6,7 @@ Hono's JSX renderer for templating, [Tailwind](https://tailwindcss.com) for styl
 
 ## Requirements
 
-Node 22 or newer.
+Node 24 or newer -- the app uses `node:sqlite`, which is flagged on Node 22.
 
 ## Getting started
 
