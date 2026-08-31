@@ -3,11 +3,12 @@ import { loadConfig } from './config.js'
 
 describe('loadConfig', () => {
   it('applies defaults for an empty environment', () => {
-    expect(loadConfig({})).toEqual({
+    expect(loadConfig({ HOME: '/home/someone' })).toEqual({
       port: 3000,
       host: '0.0.0.0',
       nodeEnv: 'development',
       isProduction: false,
+      imageDir: '/home/someone/Desktop/_stuff/_test/_source',
     })
   })
 
@@ -29,5 +30,31 @@ describe('loadConfig', () => {
 
   it('rejects an unknown NODE_ENV', () => {
     expect(() => loadConfig({ NODE_ENV: 'staging' })).toThrow(/Invalid NODE_ENV/)
+  })
+})
+
+describe('imageDir', () => {
+  it('defaults to the documented source directory under the home directory', () => {
+    const config = loadConfig({ HOME: '/home/someone' })
+
+    expect(config.imageDir).toBe('/home/someone/Desktop/_stuff/_test/_source')
+  })
+
+  it('expands a leading ~/ in IMAGE_DIR', () => {
+    const config = loadConfig({ HOME: '/home/someone', IMAGE_DIR: '~/pictures' })
+
+    expect(config.imageDir).toBe('/home/someone/pictures')
+  })
+
+  it('accepts an absolute IMAGE_DIR unchanged', () => {
+    const config = loadConfig({ HOME: '/home/someone', IMAGE_DIR: '/srv/images' })
+
+    expect(config.imageDir).toBe('/srv/images')
+  })
+
+  it('rejects a relative IMAGE_DIR', () => {
+    expect(() => loadConfig({ HOME: '/home/someone', IMAGE_DIR: 'images' })).toThrow(
+      /Invalid IMAGE_DIR/,
+    )
   })
 })
