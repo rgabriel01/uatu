@@ -9,6 +9,7 @@ export interface Config {
   readonly nodeEnv: NodeEnv
   readonly isProduction: boolean
   readonly imageDir: string
+  readonly dbPath: string
 }
 
 const NODE_ENVS: readonly NodeEnv[] = ['development', 'production', 'test']
@@ -28,6 +29,7 @@ export function loadConfig(env: Readonly<Record<string, string | undefined>>): C
     nodeEnv,
     isProduction: nodeEnv === 'production',
     imageDir: parseImageDir(env.IMAGE_DIR, env.HOME ?? homedir()),
+    dbPath: env.DB_PATH ?? './data/uatu.db',
   }
 }
 
