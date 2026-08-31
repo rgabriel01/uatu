@@ -16,8 +16,8 @@ export function Gallery(props: { total: number; children?: Child }) {
           <button
             type="button"
             id="settings-open"
-            aria-label="Slideshow settings"
-            title="Slideshow settings"
+            aria-label="Settings"
+            title="Settings"
             class="rounded-md border border-neutral-300 p-2 text-neutral-600 transition hover:bg-neutral-100 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800"
           >
             <svg
@@ -50,6 +50,28 @@ export function Gallery(props: { total: number; children?: Child }) {
       <div id="grid" class="columns-2 gap-3 sm:columns-3 lg:columns-4 xl:columns-5">
         {props.children}
       </div>
+
+      <dialog
+        id="settings-menu"
+        class="m-auto rounded-lg bg-white p-0 text-neutral-900 backdrop:bg-black/50 dark:bg-neutral-800 dark:text-neutral-100"
+      >
+        <div class="flex w-56 flex-col p-2">
+          <button
+            type="button"
+            id="menu-interval"
+            class="rounded-md px-3 py-2 text-left text-sm hover:bg-neutral-100 dark:hover:bg-neutral-700"
+          >
+            Interval
+          </button>
+          <button
+            type="button"
+            id="menu-tags"
+            class="rounded-md px-3 py-2 text-left text-sm hover:bg-neutral-100 dark:hover:bg-neutral-700"
+          >
+            Tags
+          </button>
+        </div>
+      </dialog>
 
       <dialog
         id="settings"
@@ -96,10 +118,23 @@ export function Gallery(props: { total: number; children?: Child }) {
       </dialog>
 
       <dialog
+        id="tags-dialog"
+        class="m-auto rounded-lg bg-white p-0 text-neutral-900 backdrop:bg-black/50 dark:bg-neutral-800 dark:text-neutral-100"
+      >
+        <div id="tags-dialog-body" />
+      </dialog>
+
+      <dialog
         id="lightbox"
         class="m-auto max-h-[90vh] max-w-[90vw] bg-transparent p-0 backdrop:bg-black/80"
       >
-        <img id="lightbox-image" alt="" class="max-h-[90vh] max-w-[90vw] rounded-lg" />
+        <div class="flex flex-col gap-2">
+          <img id="lightbox-image" alt="" class="max-h-[75vh] max-w-[90vw] rounded-lg" />
+          <div
+            id="lightbox-tags"
+            class="rounded-lg bg-white/95 text-neutral-900 dark:bg-neutral-800/95 dark:text-neutral-100"
+          />
+        </div>
       </dialog>
     </main>
   )

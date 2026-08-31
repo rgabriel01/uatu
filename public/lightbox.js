@@ -47,6 +47,13 @@
     const tile = tiles[current]
     image.src = tile.src
     image.alt = tile.alt
+
+    if (window.htmx) {
+      window.htmx.ajax('GET', '/images/' + encodeURIComponent(tile.dataset.name) + '/tags', {
+        target: '#lightbox-tags',
+        swap: 'innerHTML',
+      })
+    }
   }
 
   /** Moves by `delta`, wrapping around the ends so the slideshow never stalls. */
@@ -65,6 +72,15 @@
   function startAutoplay() {
     stopAutoplay()
     timer = window.setInterval(() => advance(1), readInterval() * 1000)
+  }
+
+  // Exposed so the tag panel can hold the slideshow while the user types, without
+  // reaching into the timer itself.
+  window.uatuSlideshow = {
+    pause: stopAutoplay,
+    resume: function () {
+      if (dialog.open) startAutoplay()
+    },
   }
 
   // Delegated from document, so tiles added by HTMX after load still work.
@@ -99,17 +115,54 @@
     if (event.target === dialog) dialog.close()
   })
 
+  const tagPanel = document.getElementById('lightbox-tags')
+  if (tagPanel) {
+    tagPanel.addEventListener('focusin', function () {
+      window.uatuSlideshow.pause()
+    })
+    tagPanel.addEventListener('focusout', function (event) {
+      // Only resume once focus has genuinely left the panel, not while moving
+      // between the input and the Add button.
+      if (!tagPanel.contains(event.relatedTarget)) window.uatuSlideshow.resume()
+    })
+  }
+
   // --- Settings ---------------------------------------------------------------
 
   const settings = document.getElementById('settings')
   const openSettings = document.getElementById('settings-open')
   const input = document.getElementById('interval-input')
-  if (!settings || !openSettings || !input) return
+  const menu = document.getElementById('settings-menu')
+  const tagsDialog = document.getElementById('tags-dialog')
+  const menuInterval = document.getElementById('menu-interval')
+  const menuTags = document.getElementById('menu-tags')
+  if (!settings || !openSettings || !input || !menu || !tagsDialog) return
+  if (!menuInterval || !menuTags) return
 
   openSettings.addEventListener('click', function () {
+    menu.showModal()
+  })
+
+  menuInterval.addEventListener('click', function () {
+    menu.close()
     input.value = String(readInterval())
     settings.showModal()
   })
+
+  menuTags.addEventListener('click', function () {
+    menu.close()
+    tagsDialog.showModal()
+    if (window.htmx) {
+      window.htmx.ajax('GET', '/tags', { target: '#tags-dialog-body', swap: 'innerHTML' })
+    }
+  })
+
+  // Backdrop click closes either dialog.
+  for (const d of [menu, tagsDialog]) {
+    d.addEventListener('click', function (event) {
+      if (event.target === d) d.close()
+    })
+  }
 
   settings.addEventListener('close', function () {
     if (settings.returnValue !== 'save') return
