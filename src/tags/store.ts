@@ -133,3 +133,18 @@ export function imageNamesWithAllTags(
 
   return new Set(rows.map((row) => row.name))
 }
+
+/**
+ * Every image name carrying at least one tag.
+ *
+ * Callers derive "untagged" by subtracting this from the on-disk catalog rather than
+ * querying for absence: image_tag can hold rows for files that no longer exist, and
+ * starting from the catalog keeps those orphans out of the result.
+ */
+export function taggedImageNames(db: DatabaseSync): Set<string> {
+  const rows = db
+    .prepare('SELECT DISTINCT image_name AS name FROM image_tag')
+    .all() as unknown as { name: string }[]
+
+  return new Set(rows.map((row) => row.name))
+}

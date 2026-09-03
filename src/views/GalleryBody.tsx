@@ -9,6 +9,7 @@ import { TagFilterBar } from './TagFilterBar.js'
 export function GalleryBody(props: {
   allTags: readonly Tag[]
   activeTags: readonly string[]
+  untagged: boolean
   matchCount: number
   seed: number
   children?: Child
@@ -18,6 +19,7 @@ export function GalleryBody(props: {
       <TagFilterBar
         allTags={props.allTags}
         activeTags={props.activeTags}
+        untagged={props.untagged}
         matchCount={props.matchCount}
         seed={props.seed}
       />

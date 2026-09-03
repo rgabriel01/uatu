@@ -330,3 +330,141 @@ describe('GET / with a filter', () => {
     expect(countTiles(body)).toBe(1)
   })
 })
+
+describe('filtering to untagged images', () => {
+  function tagImages(tagName: string, images: readonly string[]): void {
+    const tag = createTag(tagDb, tagName)
+    for (const image of images) addTagToImage(tagDb, image, tag.id)
+  }
+
+  it('shows every image when nothing is tagged', async () => {
+    const body = await (await gallery.request('/gallery?untagged=1&seed=1&offset=0')).text()
+
+    expect(countTiles(body)).toBe(BATCH_SIZE)
+  })
+
+  it('excludes images that carry a tag', async () => {
+    tagImages('red-birds', ['img-000.webp', 'img-001.webp'])
+
+    const names = namesIn(
+      await (await gallery.request('/gallery?untagged=1&seed=1&offset=0')).text(),
+    )
+
+    expect(names).not.toContain('img-000.webp')
+    expect(names).not.toContain('img-001.webp')
+  })
+
+  it('excludes an image carrying any tag, not only all of them', async () => {
+    tagImages('red-birds', ['img-000.webp'])
+    tagImages('blue-sky', ['img-000.webp', 'img-001.webp'])
+
+    const names = namesIn(
+      await (await gallery.request('/gallery?untagged=1&seed=1&offset=0')).text(),
+    )
+
+    expect(names).not.toContain('img-000.webp')
+    expect(names).not.toContain('img-001.webp')
+  })
+
+  it('reports the untagged count', async () => {
+    tagImages('red-birds', ['img-000.webp', 'img-001.webp'])
+
+    const body = await (await gallery.request('/gallery/view?untagged=1&seed=1')).text()
+
+    // 150 fixtures, 2 tagged.
+    expect(body).toMatch(/148 images/)
+  })
+
+  it('keeps the flag across batches -- same failure mode as the tag filter', async () => {
+    tagImages('red-birds', ['img-000.webp'])
+
+    const first = namesIn(
+      await (await gallery.request('/gallery?untagged=1&seed=5&offset=0')).text(),
+    )
+    const second = namesIn(
+      await (await gallery.request('/gallery?untagged=1&seed=5&offset=60')).text(),
+    )
+
+    expect(first).toHaveLength(BATCH_SIZE)
+    expect(second).toHaveLength(BATCH_SIZE)
+    expect([...first, ...second]).not.toContain('img-000.webp')
+    expect(new Set([...first, ...second]).size).toBe(120)
+  })
+
+  it('carries the flag on the sentinel URL', async () => {
+    const body = await (await gallery.request('/gallery?untagged=1&seed=5&offset=0')).text()
+
+    expect(body).toContain('untagged=1')
+    expect(body).toContain('offset=60')
+  })
+
+  it('is stable for the same seed', async () => {
+    const a = await (await gallery.request('/gallery?untagged=1&seed=3&offset=0')).text()
+    const b = await (await gallery.request('/gallery?untagged=1&seed=3&offset=0')).text()
+
+    expect(namesIn(a)).toEqual(namesIn(b))
+  })
+
+  it('returns nothing when every image is tagged', async () => {
+    const all = Array.from({ length: 150 }, (_, i) => `img-${String(i).padStart(3, '0')}.webp`)
+    tagImages('everything', all)
+
+    const body = await (await gallery.request('/gallery?untagged=1&seed=1&offset=0')).text()
+
+    expect(countTiles(body)).toBe(0)
+  })
+
+  it('lets untagged win if tags are also present', async () => {
+    tagImages('red-birds', ['img-000.webp'])
+
+    const names = namesIn(
+      await (await gallery.request('/gallery?untagged=1&tag=red-birds&seed=1&offset=0')).text(),
+    )
+
+    expect(names).not.toContain('img-000.webp')
+    expect(names.length).toBe(BATCH_SIZE)
+  })
+
+  it('applies the flag from the page URL', async () => {
+    tagImages('red-birds', ['img-000.webp'])
+
+    const body = await (await gallery.request('/?untagged=1')).text()
+
+    expect(body).toContain('<!DOCTYPE html>')
+    expect(namesIn(body)).not.toContain('img-000.webp')
+  })
+})
+
+describe('untagged chip', () => {
+  it('renders an Untagged chip', async () => {
+    const body = await (await gallery.request('/gallery/view?seed=1')).text()
+
+    expect(body).toContain('id="untagged-chip"')
+    expect(body).toContain('Untagged')
+  })
+
+  it('marks the chip pressed when the filter is on', async () => {
+    const body = await (await gallery.request('/gallery/view?untagged=1&seed=1')).text()
+
+    expect(body).toMatch(/id="untagged-chip"[^>]*aria-pressed="true"/)
+  })
+
+  it('selecting a tag clears untagged -- the two are mutually exclusive', async () => {
+    createTag(tagDb, 'red-birds')
+
+    const body = await (await gallery.request('/gallery/view?untagged=1&seed=1')).text()
+
+    expect(body).toMatch(/hx-get="[^"]*tag=red-birds"/)
+    expect(body).not.toMatch(/hx-get="[^"]*untagged=1&amp;tag=red-birds"/)
+  })
+
+  it('the untagged chip clears any selected tags', async () => {
+    createTag(tagDb, 'red-birds')
+
+    const body = await (await gallery.request('/gallery/view?tag=red-birds&seed=1')).text()
+    const chip = body.match(/<button id="untagged-chip"[^>]*>/)![0]
+
+    expect(chip).not.toContain('tag=red-birds')
+    expect(chip).toContain('untagged=1')
+  })
+})

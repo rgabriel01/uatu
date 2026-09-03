@@ -14,6 +14,7 @@ export function GridBatch(props: {
   seed: number
   nextOffset: number | null
   tags: readonly string[]
+  untagged: boolean
 }) {
   return (
     <>
@@ -26,6 +27,7 @@ export function GridBatch(props: {
             seed: props.seed,
             offset: props.nextOffset,
             tags: props.tags,
+            untagged: props.untagged,
           })}
           hx-trigger="revealed"
           hx-swap="outerHTML"

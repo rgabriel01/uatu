@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { buildGalleryQuery, galleryUrl, parseTagSelection } from './filter.js'
+import { buildGalleryQuery, galleryUrl, parseTagSelection, parseUntagged } from './filter.js'
 
 describe('parseTagSelection', () => {
   it('keeps valid tag names', () => {
@@ -64,5 +64,44 @@ describe('galleryUrl', () => {
   it('omits the question mark when there is nothing to encode', () => {
     expect(galleryUrl('/', { tags: [] })).toBe('/')
     expect(galleryUrl('/gallery/view', { tags: [] })).toBe('/gallery/view')
+  })
+})
+
+describe('parseUntagged', () => {
+  it('is true for 1 and true', () => {
+    expect(parseUntagged('1')).toBe(true)
+    expect(parseUntagged('true')).toBe(true)
+  })
+
+  it('is false when absent', () => {
+    expect(parseUntagged(undefined)).toBe(false)
+  })
+
+  it('is false for anything else', () => {
+    expect(parseUntagged('0')).toBe(false)
+    expect(parseUntagged('')).toBe(false)
+    expect(parseUntagged('no')).toBe(false)
+  })
+})
+
+describe('buildGalleryQuery with untagged', () => {
+  it('emits untagged=1 when set', () => {
+    expect(buildGalleryQuery({ seed: 7, tags: [], untagged: true })).toBe('seed=7&untagged=1')
+  })
+
+  it('omits it entirely when false, keeping URLs clean', () => {
+    expect(buildGalleryQuery({ seed: 7, tags: [], untagged: false })).toBe('seed=7')
+    expect(buildGalleryQuery({ seed: 7, tags: [] })).toBe('seed=7')
+  })
+
+  it('places untagged before tags for a stable order', () => {
+    expect(buildGalleryQuery({ offset: 60, tags: ['apple'], untagged: true })).toBe(
+      'offset=60&untagged=1&tag=apple',
+    )
+  })
+
+  it('galleryUrl still omits the question mark when nothing is encoded', () => {
+    expect(galleryUrl('/', { tags: [], untagged: false })).toBe('/')
+    expect(galleryUrl('/', { tags: [], untagged: true })).toBe('/?untagged=1')
   })
 })

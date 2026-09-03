@@ -5,7 +5,11 @@ import { galleryUrl } from '../gallery/filter.js'
  * The gallery page body. The grid is a CSS multi-column layout rather than a grid,
  * which lets tiles of differing heights pack without cropping or fixed aspect ratios.
  */
-export function Gallery(props: { activeTags: readonly string[]; children?: Child }) {
+export function Gallery(props: {
+  activeTags: readonly string[]
+  untagged: boolean
+  children?: Child
+}) {
   return (
     <main id="app" class="mx-auto max-w-7xl px-4 py-8">
       <header class="mb-6 flex items-center justify-between gap-4">
@@ -35,7 +39,7 @@ export function Gallery(props: { activeTags: readonly string[]; children?: Child
           </button>
           <button
             type="button"
-            hx-get={galleryUrl('/gallery/view', { tags: props.activeTags })}
+            hx-get={galleryUrl('/gallery/view', { tags: props.activeTags, untagged: props.untagged })}
             hx-target="#gallery-body"
             hx-swap="outerHTML"
             class="rounded-md border border-accent px-4 py-2 text-sm text-accent transition hover:bg-accent hover:text-white dark:border-accent-dark dark:text-accent-dark dark:hover:bg-accent-dark dark:hover:text-neutral-900"
