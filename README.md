@@ -153,6 +153,12 @@ added shows fewer images, not more. The selection appears in the page URL
 reload. The shuffle seed is deliberately *not* in the URL: reloading keeps your filter and
 gives you a fresh order.
 
+An **Untagged** chip shows only images carrying no tags at all (`/?untagged=1`). It is
+mutually exclusive with the tag chips -- an image with a tag is never untagged, so
+selecting one mode clears the other. The set is computed as the on-disk catalog minus
+every image with at least one tag, which keeps rows for deleted files from leaking into
+results.
+
 Two invariants keep this correct, both learned from the seeded shuffle:
 
 - **Filtering happens before shuffling**, so the permutation is over the filtered list. The
