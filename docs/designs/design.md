@@ -22,3 +22,6 @@
 ### Grouped Tag Feature
 - it must have a functionality that allows the user to further filter the displayed images by tags
 - a user can apply multiple tags and the list further filters by tag
+
+### Ability to filter by images with no tags
+- it must have a functionality that allows user to see all images with no tags yet
