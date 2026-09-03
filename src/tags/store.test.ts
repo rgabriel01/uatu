@@ -11,6 +11,7 @@ import {
   listTags,
   removeTagFromImage,
   renameTag,
+  taggedImageNames,
   tagUsageCount,
   tagsForImage,
 } from './store.js'
@@ -209,5 +210,50 @@ describe('imageNamesWithAllTags', () => {
 
   it('returns an empty set for an empty selection -- callers must skip instead', () => {
     expect(imageNamesWithAllTags(db, []).size).toBe(0)
+  })
+})
+
+describe('taggedImageNames', () => {
+  it('returns an empty set when nothing is tagged', () => {
+    expect(taggedImageNames(db).size).toBe(0)
+  })
+
+  it('returns each image carrying at least one tag, once', () => {
+    const red = createTag(db, 'red-birds')
+    const blue = createTag(db, 'blue-sky')
+    addTagToImage(db, 'a.webp', red.id)
+    addTagToImage(db, 'a.webp', blue.id)
+    addTagToImage(db, 'b.webp', red.id)
+
+    expect([...taggedImageNames(db)].sort()).toEqual(['a.webp', 'b.webp'])
+  })
+
+  it('keeps an image tagged when only one of its tags is removed', () => {
+    const red = createTag(db, 'red-birds')
+    const blue = createTag(db, 'blue-sky')
+    addTagToImage(db, 'a.webp', red.id)
+    addTagToImage(db, 'a.webp', blue.id)
+
+    removeTagFromImage(db, 'a.webp', red.id)
+
+    expect(taggedImageNames(db).has('a.webp')).toBe(true)
+  })
+
+  it('drops an image once its last tag is removed', () => {
+    const red = createTag(db, 'red-birds')
+    addTagToImage(db, 'a.webp', red.id)
+
+    removeTagFromImage(db, 'a.webp', red.id)
+
+    expect(taggedImageNames(db).has('a.webp')).toBe(false)
+  })
+
+  it('drops associations when the tag itself is deleted', () => {
+    const red = createTag(db, 'red-birds')
+    addTagToImage(db, 'a.webp', red.id)
+
+    deleteTag(db, red.id)
+
+    expect(taggedImageNames(db).size).toBe(0)
   })
 })
