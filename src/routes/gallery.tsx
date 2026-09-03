@@ -3,10 +3,10 @@ import { Hono } from 'hono'
 import { config } from '../config.js'
 import { getDatabase } from '../db/index.js'
 import { readCatalog } from '../gallery/catalog.js'
-import { parseTagSelection } from '../gallery/filter.js'
+import { parseTagSelection, parseUntagged } from '../gallery/filter.js'
 import { randomSeed, shuffled } from '../gallery/shuffle.js'
 import { renderPage } from '../render.js'
-import { imageNamesWithAllTags, listTags } from '../tags/store.js'
+import { imageNamesWithAllTags, listTags, taggedImageNames } from '../tags/store.js'
 import { Gallery } from '../views/Gallery.js'
 import { GalleryBody } from '../views/GalleryBody.js'
 import { GridBatch } from '../views/GridBatch.js'
@@ -36,12 +36,22 @@ export function createGalleryRoutes(getDb: () => DatabaseSync): Hono {
    * Filtering happens BEFORE shuffling so the permutation is over the filtered list.
    * Shuffling first and filtering after would make each batch an uneven slice of the
    * unfiltered order.
+   *
+   * `untagged` takes precedence over tags: the two are mutually exclusive, and a
+   * request carrying both is a hand-edited or stale URL rather than a real intent.
    */
-  async function select(seed: number, tags: readonly string[]): Promise<string[]> {
+  async function select(
+    seed: number,
+    tags: readonly string[],
+    untagged: boolean,
+  ): Promise<string[]> {
     const catalog = await readCatalog(config.imageDir)
 
     let names: readonly string[] = catalog.names
-    if (tags.length > 0) {
+    if (untagged) {
+      const tagged = taggedImageNames(getDb())
+      names = names.filter((name) => !tagged.has(name))
+    } else if (tags.length > 0) {
       const allowed = imageNamesWithAllTags(getDb(), tags)
       names = names.filter((name) => allowed.has(name))
     }
@@ -58,21 +68,29 @@ export function createGalleryRoutes(getDb: () => DatabaseSync): Hono {
 
   app.get('/', async (c) => {
     const tags = parseTagSelection(c.req.queries('tag') ?? [])
+    const untagged = parseUntagged(c.req.query('untagged'))
     const seed = randomSeed()
-    const order = await select(seed, tags)
+    const order = await select(seed, tags, untagged)
     const { names, nextOffset } = batchOf(order, 0)
 
     return renderPage(
       c,
       'uatu',
-      <Gallery activeTags={tags}>
+      <Gallery activeTags={tags} untagged={untagged}>
         <GalleryBody
           allTags={listTags(getDb())}
           activeTags={tags}
+          untagged={untagged}
           matchCount={order.length}
           seed={seed}
         >
-          <GridBatch names={names} seed={seed} nextOffset={nextOffset} tags={tags} />
+          <GridBatch
+            names={names}
+            seed={seed}
+            nextOffset={nextOffset}
+            tags={tags}
+            untagged={untagged}
+          />
         </GalleryBody>
       </Gallery>,
     )
@@ -80,30 +98,45 @@ export function createGalleryRoutes(getDb: () => DatabaseSync): Hono {
 
   app.get('/gallery/view', async (c) => {
     const tags = parseTagSelection(c.req.queries('tag') ?? [])
+    const untagged = parseUntagged(c.req.query('untagged'))
     const seed = seedFrom(c.req.query('seed'))
-    const order = await select(seed, tags)
+    const order = await select(seed, tags, untagged)
     const { names, nextOffset } = batchOf(order, 0)
 
     return c.html(
       <GalleryBody
         allTags={listTags(getDb())}
         activeTags={tags}
+        untagged={untagged}
         matchCount={order.length}
         seed={seed}
       >
-        <GridBatch names={names} seed={seed} nextOffset={nextOffset} tags={tags} />
+        <GridBatch
+            names={names}
+            seed={seed}
+            nextOffset={nextOffset}
+            tags={tags}
+            untagged={untagged}
+          />
       </GalleryBody>,
     )
   })
 
   app.get('/gallery', async (c) => {
     const tags = parseTagSelection(c.req.queries('tag') ?? [])
+    const untagged = parseUntagged(c.req.query('untagged'))
     const seed = seedFrom(c.req.query('seed'))
     const offset = offsetFrom(c.req.query('offset'))
-    const order = await select(seed, tags)
+    const order = await select(seed, tags, untagged)
     const { names, nextOffset } = batchOf(order, offset)
 
-    return c.html(<GridBatch names={names} seed={seed} nextOffset={nextOffset} tags={tags} />)
+    return c.html(<GridBatch
+            names={names}
+            seed={seed}
+            nextOffset={nextOffset}
+            tags={tags}
+            untagged={untagged}
+          />)
   })
 
   return app
