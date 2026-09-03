@@ -12,14 +12,22 @@ export function parseTagSelection(raw: readonly string[]): string[] {
   return [...new Set(names)].sort()
 }
 
+/** Accepts the values a link or form would realistically produce; anything else is false. */
+export function parseUntagged(raw: string | undefined): boolean {
+  return raw === '1' || raw === 'true'
+}
+
 export function buildGalleryQuery(params: {
   seed?: number
   offset?: number
   tags: readonly string[]
+  untagged?: boolean
 }): string {
   const parts: string[] = []
   if (params.seed !== undefined) parts.push(`seed=${params.seed}`)
   if (params.offset !== undefined) parts.push(`offset=${params.offset}`)
+  // Emitted only when true, so an unfiltered URL carries no trace of it.
+  if (params.untagged === true) parts.push('untagged=1')
   for (const tag of params.tags) parts.push(`tag=${encodeURIComponent(tag)}`)
   return parts.join('&')
 }
@@ -27,7 +35,7 @@ export function buildGalleryQuery(params: {
 /** Joins a path and query, omitting the `?` when there is nothing to encode. */
 export function galleryUrl(
   path: string,
-  params: { seed?: number; offset?: number; tags: readonly string[] },
+  params: { seed?: number; offset?: number; tags: readonly string[]; untagged?: boolean },
 ): string {
   const query = buildGalleryQuery(params)
   return query === '' ? path : `${path}?${query}`
