@@ -9,6 +9,7 @@ import {
   deleteTag,
   imageNamesWithAllTags,
   listTags,
+  listTagsWithUsage,
   removeTagFromImage,
   renameTag,
   taggedImageNames,
@@ -20,6 +21,28 @@ let db: DatabaseSync
 
 beforeEach(() => {
   db = openDatabase(':memory:')
+})
+
+describe('listTagsWithUsage', () => {
+  it('counts the images carrying each tag, in name order', () => {
+    const birds = createTag(db, 'red-birds')
+    const fish = createTag(db, 'blue-fish')
+    addTagToImage(db, 'one.webp', birds.id)
+    addTagToImage(db, 'two.webp', birds.id)
+
+    expect(listTagsWithUsage(db)).toEqual([
+      { id: fish.id, name: 'blue-fish', usageCount: 0 },
+      { id: birds.id, name: 'red-birds', usageCount: 2 },
+    ])
+  })
+
+  it('agrees with tagUsageCount', () => {
+    const tag = createTag(db, 'red-birds')
+    addTagToImage(db, 'one.webp', tag.id)
+
+    const row = listTagsWithUsage(db).find((t) => t.id === tag.id)
+    expect(row?.usageCount).toBe(tagUsageCount(db, tag.id))
+  })
 })
 
 describe('createTag', () => {

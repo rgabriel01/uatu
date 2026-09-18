@@ -9,17 +9,13 @@ import {
   createTag,
   deleteTag,
   listTags,
+  listTagsWithUsage,
   removeTagFromImage,
   renameTag,
-  tagUsageCount,
   tagsForImage,
 } from '../tags/store.js'
 import { ImageTags } from '../views/ImageTags.js'
-import { TagManager, type TagRow } from '../views/TagManager.js'
-
-function rows(db: DatabaseSync): TagRow[] {
-  return listTags(db).map((tag) => ({ ...tag, usageCount: tagUsageCount(db, tag.id) }))
-}
+import { TagManager } from '../views/TagManager.js'
 
 /** Turns the store's typed errors into a message, and anything else into a rethrow. */
 function messageFor(error: unknown): string {
@@ -36,7 +32,7 @@ function messageFor(error: unknown): string {
 export function createTagRoutes(getDb: () => DatabaseSync): Hono {
   const app = new Hono()
 
-  app.get('/tags', (c) => c.html(<TagManager tags={rows(getDb())} />))
+  app.get('/tags', (c) => c.html(<TagManager tags={listTagsWithUsage(getDb())} />))
 
   app.post('/tags', async (c) => {
     const db = getDb()
@@ -45,9 +41,9 @@ export function createTagRoutes(getDb: () => DatabaseSync): Hono {
     try {
       createTag(db, name)
     } catch (error) {
-      return c.html(<TagManager tags={rows(db)} error={messageFor(error)} />)
+      return c.html(<TagManager tags={listTagsWithUsage(db)} error={messageFor(error)} />)
     }
-    return c.html(<TagManager tags={rows(db)} />)
+    return c.html(<TagManager tags={listTagsWithUsage(db)} />)
   })
 
   app.post('/tags/:id/rename', async (c) => {
@@ -58,15 +54,15 @@ export function createTagRoutes(getDb: () => DatabaseSync): Hono {
     try {
       renameTag(db, id, name)
     } catch (error) {
-      return c.html(<TagManager tags={rows(db)} error={messageFor(error)} />)
+      return c.html(<TagManager tags={listTagsWithUsage(db)} error={messageFor(error)} />)
     }
-    return c.html(<TagManager tags={rows(db)} />)
+    return c.html(<TagManager tags={listTagsWithUsage(db)} />)
   })
 
   app.post('/tags/:id/delete', (c) => {
     const db = getDb()
     deleteTag(db, Number(c.req.param('id')))
-    return c.html(<TagManager tags={rows(db)} />)
+    return c.html(<TagManager tags={listTagsWithUsage(db)} />)
   })
 
   app.get('/images/:name/tags', (c) => {

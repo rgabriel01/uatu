@@ -234,6 +234,44 @@ describe('cog menu markup contract', () => {
   })
 })
 
+describe('popular tag chips', () => {
+  function tagImages(tagName: string, count: number): void {
+    const tag = createTag(tagDb, tagName)
+    for (let i = 0; i < count; i++) {
+      addTagToImage(tagDb, `img-${String(i).padStart(3, '0')}.webp`, tag.id)
+    }
+  }
+
+  function chipFor(html: string, name: string): string {
+    const chips = [...html.matchAll(/<button[^>]*>([^<]*)<\/button>/g)]
+    return chips.find((m) => m[1]?.trim() === name)?.[0] ?? ''
+  }
+
+  it('tints a chip green once a tag carries more than ten images', async () => {
+    tagImages('popular', 11)
+    const body = await (await gallery.request('/')).text()
+
+    expect(chipFor(body, 'popular')).toContain('bg-accent/15')
+  })
+
+  it('leaves a chip untinted at exactly ten images', async () => {
+    tagImages('borderline', 10)
+    const body = await (await gallery.request('/')).text()
+
+    // "More than 10" -- ten itself is not enough.
+    expect(chipFor(body, 'borderline')).not.toContain('bg-accent/15')
+  })
+
+  it('keeps the solid accent fill for the selected chip, tinted or not', async () => {
+    tagImages('popular', 11)
+    const body = await (await gallery.request('/?tag=popular')).text()
+
+    const chip = chipFor(body, 'popular')
+    expect(chip).toContain('bg-accent ')
+    expect(chip).not.toContain('bg-accent/15')
+  })
+})
+
 describe('filtering by tag', () => {
   function tagImages(tagName: string, images: readonly string[]): void {
     const tag = createTag(tagDb, tagName)
