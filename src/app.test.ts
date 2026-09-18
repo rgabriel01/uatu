@@ -48,6 +48,37 @@ describe('GET /', () => {
   })
 })
 
+describe('asset URLs', () => {
+  it('stamps the stylesheet with a version that changes when it is rebuilt', async () => {
+    const body = await (await app.request('/')).text()
+    const href = body.match(/href="(\/static\/app\.css[^"]*)"/)![1]
+
+    // Without this a browser holding a still-fresh cached copy never asks for the
+    // rebuilt file at all.
+    expect(href).toMatch(/^\/static\/app\.css\?v=\d+$/)
+  })
+
+  it('serves the stylesheet at its versioned URL', async () => {
+    const body = await (await app.request('/')).text()
+    const href = body.match(/href="(\/static\/app\.css[^"]*)"/)![1]
+    const res = await app.request(href)
+
+    expect(res.status).toBe(200)
+    expect(res.headers.get('content-type')).toContain('text/css')
+  })
+})
+
+describe('GET /static/*', () => {
+  it('serves assets that always revalidate', async () => {
+    const res = await app.request('/static/app.css')
+
+    expect(res.status).toBe(200)
+    // Without this the browser heuristically caches the stylesheet off
+    // Last-Modified alone and keeps serving a stale build.
+    expect(res.headers.get('cache-control')).toBe('no-cache')
+  })
+})
+
 describe('GET /health', () => {
   it('reports ok', async () => {
     const res = await app.request('/health')

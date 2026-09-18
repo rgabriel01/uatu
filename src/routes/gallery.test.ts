@@ -160,6 +160,31 @@ describe('lightbox markup contract', () => {
     expect(body).toContain('id="lightbox-image"')
   })
 
+  it('keeps the lightbox image at its own aspect ratio', async () => {
+    const body = await (await gallery.request('/')).text()
+    const img = body.match(/<img id="lightbox-image"[^>]*>/)![0]
+
+    // A long tag list widens the flex column; without these the image would be
+    // stretched to match it.
+    expect(img).toContain('self-center')
+    expect(img).toContain('object-contain')
+    // Capped at 600px, but never taller than the viewport allows.
+    expect(img).toContain('max-h-[min(600px,85vh)]')
+  })
+
+  it('puts the tag panel beside the image, not under it', async () => {
+    const body = await (await gallery.request('/')).text()
+    const layout = body.match(/<div id="lightbox-body"[^>]*>/)![0]
+    const panel = body.match(/<div id="lightbox-tags"[^>]*>/)![0]
+
+    // Beside the image at every width -- no breakpoint -- so the list grows
+    // sideways and nothing has to scroll.
+    expect(layout).toContain('items-start')
+    expect(layout).not.toContain('flex-col')
+    expect(panel).toContain('w-[min(18rem,40vw)]')
+    expect(panel).not.toContain('overflow')
+  })
+
   it('gives every tile a data-name for the lightbox to read', async () => {
     const body = await (await gallery.request('/')).text()
     const imgTags = (body.match(/<img /g) ?? []).length
