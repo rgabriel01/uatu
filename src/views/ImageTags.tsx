@@ -50,7 +50,7 @@ export function ImageTags(props: { imageName: string; tags: readonly Tag[]; erro
           name="name"
           placeholder="add-a-tag"
           required
-          class="flex-1 rounded-md border border-neutral-300 px-3 py-1 text-sm dark:border-neutral-600 dark:bg-neutral-900"
+          class="min-w-0 flex-1 rounded-md border border-neutral-300 px-3 py-1 text-sm dark:border-neutral-600 dark:bg-neutral-900"
         />
         <button
           type="submit"

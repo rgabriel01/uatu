@@ -128,11 +128,19 @@ export function Gallery(props: {
         id="lightbox"
         class="m-auto max-h-[90vh] max-w-[90vw] bg-transparent p-0 backdrop:bg-black/80"
       >
-        <div class="flex flex-col gap-2">
-          <img id="lightbox-image" alt="" class="max-h-[75vh] max-w-[90vw] rounded-lg" />
+        {/* The panel always sits beside the image, so a long tag list grows sideways
+            instead of eating the image's height -- nothing has to scroll. The panel
+            holds its width and the image absorbs what is left; `min-w-0` is what
+            lets it shrink, and a shrunk replaced element keeps its aspect ratio. */}
+        <div id="lightbox-body" class="flex items-start gap-3">
+          <img
+            id="lightbox-image"
+            alt=""
+            class="max-h-[min(600px,85vh)] min-w-0 self-center rounded-lg object-contain"
+          />
           <div
             id="lightbox-tags"
-            class="rounded-lg bg-white/95 text-neutral-900 dark:bg-neutral-800/95 dark:text-neutral-100"
+            class="w-[min(18rem,40vw)] shrink-0 rounded-lg bg-white/95 text-neutral-900 dark:bg-neutral-800/95 dark:text-neutral-100"
           />
         </div>
       </dialog>
