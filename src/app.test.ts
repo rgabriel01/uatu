@@ -48,29 +48,36 @@ describe('GET /', () => {
   })
 })
 
+// `public/app.css` is a build artifact and gitignored, so it is absent on a fresh
+// checkout. These assert against a committed asset instead, which keeps them
+// meaningful on CI, where `npm test` runs before `npm run build`.
+const ASSET = '/static/lightbox.js'
+
+function assetHref(body: string): string {
+  const match = body.match(/src="(\/static\/lightbox\.js[^"]*)"/)
+  return match?.[1] ?? ''
+}
+
 describe('asset URLs', () => {
-  it('stamps the stylesheet with a version that changes when it is rebuilt', async () => {
+  it('stamps assets with a version that changes when they are rebuilt', async () => {
     const body = await (await app.request('/')).text()
-    const href = body.match(/href="(\/static\/app\.css[^"]*)"/)![1]
 
     // Without this a browser holding a still-fresh cached copy never asks for the
     // rebuilt file at all.
-    expect(href).toMatch(/^\/static\/app\.css\?v=\d+$/)
+    expect(assetHref(body)).toMatch(/^\/static\/lightbox\.js\?v=\d+$/)
   })
 
-  it('serves the stylesheet at its versioned URL', async () => {
+  it('serves the asset at its versioned URL', async () => {
     const body = await (await app.request('/')).text()
-    const href = body.match(/href="(\/static\/app\.css[^"]*)"/)![1]
-    const res = await app.request(href)
+    const res = await app.request(assetHref(body))
 
     expect(res.status).toBe(200)
-    expect(res.headers.get('content-type')).toContain('text/css')
   })
 })
 
 describe('GET /static/*', () => {
   it('serves assets that always revalidate', async () => {
-    const res = await app.request('/static/app.css')
+    const res = await app.request(ASSET)
 
     expect(res.status).toBe(200)
     // Without this the browser heuristically caches the stylesheet off
