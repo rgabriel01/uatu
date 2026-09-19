@@ -234,6 +234,64 @@ describe('cog menu markup contract', () => {
   })
 })
 
+describe('popular tag chips', () => {
+  function tagImages(tagName: string, count: number): void {
+    const tag = createTag(tagDb, tagName)
+    for (let i = 0; i < count; i++) {
+      addTagToImage(tagDb, `img-${String(i).padStart(3, '0')}.webp`, tag.id)
+    }
+  }
+
+  function chipFor(html: string, name: string): string {
+    const chips = [...html.matchAll(/<button[^>]*>([^<]*)<\/button>/g)]
+    return chips.find((m) => m[1]?.trim() === name)?.[0] ?? ''
+  }
+
+  it('tints a chip green once a tag carries more than ten images (under twenty)', async () => {
+    tagImages('popular', 11)
+    const body = await (await gallery.request('/')).text()
+
+    expect(chipFor(body, 'popular')).toContain('bg-accent/15')
+    expect(chipFor(body, 'popular')).not.toContain('bg-amber-200')
+  })
+
+  it('leaves a chip untinted at exactly ten images', async () => {
+    tagImages('borderline', 10)
+    const body = await (await gallery.request('/')).text()
+
+    // "More than 10" -- ten itself is not enough.
+    expect(chipFor(body, 'borderline')).not.toContain('bg-accent/15')
+    expect(chipFor(body, 'borderline')).not.toContain('bg-amber-200')
+  })
+
+  it('applies a yellowish gold background once a tag carries twenty or more images', async () => {
+    tagImages('very-popular', 20)
+    const body = await (await gallery.request('/')).text()
+
+    const chip = chipFor(body, 'very-popular')
+    expect(chip).toContain('bg-amber-200')
+    expect(chip).not.toContain('bg-accent/15')
+  })
+
+  it('keeps the solid accent fill for the selected chip, tinted or not', async () => {
+    tagImages('popular', 11)
+    const body = await (await gallery.request('/?tag=popular')).text()
+
+    const chip = chipFor(body, 'popular')
+    expect(chip).toContain('bg-accent ')
+    expect(chip).not.toContain('bg-accent/15')
+  })
+
+  it('keeps the solid accent fill for a selected chip with twenty or more images', async () => {
+    tagImages('very-popular-selected', 20)
+    const body = await (await gallery.request('/?tag=very-popular-selected')).text()
+
+    const chip = chipFor(body, 'very-popular-selected')
+    expect(chip).toContain('bg-accent ')
+    expect(chip).not.toContain('bg-amber-200')
+  })
+})
+
 describe('filtering by tag', () => {
   function tagImages(tagName: string, images: readonly string[]): void {
     const tag = createTag(tagDb, tagName)

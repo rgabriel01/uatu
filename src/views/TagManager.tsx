@@ -1,14 +1,10 @@
-import type { Tag } from '../tags/store.js'
-
-export interface TagRow extends Tag {
-  readonly usageCount: number
-}
+import type { TagUsage } from '../tags/store.js'
 
 /**
  * The whole tag manager as one fragment. Every mutating route re-renders this, so the
  * dialog contents are always a fresh read rather than a client-side patch.
  */
-export function TagManager(props: { tags: readonly TagRow[]; error?: string }) {
+export function TagManager(props: { tags: readonly TagUsage[]; error?: string }) {
   return (
     <div id="tag-manager" class="flex w-96 max-w-full flex-col gap-4 p-5">
       <div>

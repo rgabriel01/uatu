@@ -6,6 +6,10 @@ export interface Tag {
   readonly name: string
 }
 
+export interface TagUsage extends Tag {
+  readonly usageCount: number
+}
+
 export class DuplicateTagError extends Error {
   constructor(name: string) {
     super(`A tag named "${name}" already exists.`)
@@ -32,6 +36,25 @@ function toValidName(raw: string): string {
 
 export function listTags(db: DatabaseSync): Tag[] {
   return db.prepare('SELECT id, name FROM tag ORDER BY name').all() as unknown as Tag[]
+}
+
+/**
+ * Every tag with the number of images carrying it. One grouped query rather than a
+ * `tagUsageCount` per tag, because both callers -- the filter bar and the manager --
+ * want counts for the whole list at once.
+ *
+ * The LEFT JOIN is what keeps unused tags in the result, counting 0.
+ */
+export function listTagsWithUsage(db: DatabaseSync): TagUsage[] {
+  return db
+    .prepare(
+      `SELECT tag.id AS id, tag.name AS name, COUNT(image_tag.image_name) AS usageCount
+         FROM tag
+         LEFT JOIN image_tag ON image_tag.tag_id = tag.id
+        GROUP BY tag.id
+        ORDER BY tag.name`,
+    )
+    .all() as unknown as TagUsage[]
 }
 
 function findByName(db: DatabaseSync, name: string): Tag | undefined {

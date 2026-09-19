@@ -1,5 +1,5 @@
 import { galleryUrl } from '../gallery/filter.js'
-import type { Tag } from '../tags/store.js'
+import type { TagUsage } from '../tags/store.js'
 
 function toggled(active: readonly string[], name: string): string[] {
   return active.includes(name) ? active.filter((t) => t !== name) : [...active, name].sort()
@@ -9,6 +9,16 @@ const ACTIVE_CHIP =
   'rounded-full border border-accent bg-accent px-3 py-1 text-sm text-white dark:border-accent-dark dark:bg-accent-dark dark:text-neutral-900'
 const IDLE_CHIP =
   'rounded-full border border-neutral-300 px-3 py-1 text-sm text-neutral-700 hover:border-neutral-400 dark:border-neutral-600 dark:text-neutral-300'
+// A tag has to carry *more* than this to count as popular, so ten itself stays plain.
+export const POPULAR_TAG_THRESHOLD = 10
+// A tag carrying 20 or more images gets a yellowish gold chip.
+export const VERY_POPULAR_TAG_THRESHOLD = 20
+// Distinct from ACTIVE_CHIP on purpose: a tinted chip says "lots of images", a solid
+// one says "you are filtering by this". Reusing the solid fill would conflate them.
+const POPULAR_CHIP =
+  'rounded-full border border-accent/40 bg-accent/15 px-3 py-1 text-sm text-accent hover:border-accent dark:border-accent-dark/40 dark:bg-accent-dark/15 dark:text-accent-dark'
+const VERY_POPULAR_CHIP =
+  'rounded-full border border-amber-400 bg-amber-200 px-3 py-1 text-sm text-amber-950 hover:border-amber-500 dark:border-amber-400/40 dark:bg-amber-400/20 dark:text-amber-300'
 const IDLE_UNTAGGED_CHIP =
   'rounded-full border border-dashed border-neutral-400 px-3 py-1 text-sm text-neutral-600 hover:border-neutral-500 dark:border-neutral-500 dark:text-neutral-400'
 
@@ -21,7 +31,7 @@ const IDLE_UNTAGGED_CHIP =
  * therefore clears the other mode rather than adding to it.
  */
 export function TagFilterBar(props: {
-  allTags: readonly Tag[]
+  allTags: readonly TagUsage[]
   activeTags: readonly string[]
   untagged: boolean
   matchCount: number
@@ -53,6 +63,15 @@ export function TagFilterBar(props: {
         {props.allTags.map((tag) => {
           const next = toggled(active, tag.name)
           const isActive = active.includes(tag.name)
+          const isVeryPopular = tag.usageCount >= VERY_POPULAR_TAG_THRESHOLD
+          const isPopular = tag.usageCount > POPULAR_TAG_THRESHOLD
+          const chipClass = isActive
+            ? ACTIVE_CHIP
+            : isVeryPopular
+              ? VERY_POPULAR_CHIP
+              : isPopular
+                ? POPULAR_CHIP
+                : IDLE_CHIP
           return (
             <button
               key={tag.id}
@@ -66,7 +85,8 @@ export function TagFilterBar(props: {
               hx-swap="outerHTML"
               hx-push-url={galleryUrl('/', { tags: next, untagged: false })}
               aria-pressed={isActive ? 'true' : 'false'}
-              class={isActive ? ACTIVE_CHIP : IDLE_CHIP}
+              class={chipClass}
+              title={`${tag.usageCount} images`}
             >
               {tag.name}
             </button>

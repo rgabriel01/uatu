@@ -6,7 +6,7 @@ import { readCatalog } from '../gallery/catalog.js'
 import { parseTagSelection, parseUntagged } from '../gallery/filter.js'
 import { randomSeed, shuffled } from '../gallery/shuffle.js'
 import { renderPage } from '../render.js'
-import { imageNamesWithAllTags, listTags, taggedImageNames } from '../tags/store.js'
+import { imageNamesWithAllTags, listTagsWithUsage, taggedImageNames } from '../tags/store.js'
 import { Gallery } from '../views/Gallery.js'
 import { GalleryBody } from '../views/GalleryBody.js'
 import { GridBatch } from '../views/GridBatch.js'
@@ -78,7 +78,7 @@ export function createGalleryRoutes(getDb: () => DatabaseSync): Hono {
       'uatu',
       <Gallery activeTags={tags} untagged={untagged}>
         <GalleryBody
-          allTags={listTags(getDb())}
+          allTags={listTagsWithUsage(getDb())}
           activeTags={tags}
           untagged={untagged}
           matchCount={order.length}
@@ -105,7 +105,7 @@ export function createGalleryRoutes(getDb: () => DatabaseSync): Hono {
 
     return c.html(
       <GalleryBody
-        allTags={listTags(getDb())}
+        allTags={listTagsWithUsage(getDb())}
         activeTags={tags}
         untagged={untagged}
         matchCount={order.length}

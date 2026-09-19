@@ -142,3 +142,7 @@ vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
 .vite/
 public/app.css
+
+# Database
+data/uatu.db
+

@@ -1,5 +1,5 @@
 import type { Child } from 'hono/jsx'
-import type { Tag } from '../tags/store.js'
+import type { TagUsage } from '../tags/store.js'
 import { TagFilterBar } from './TagFilterBar.js'
 
 /**
@@ -7,7 +7,7 @@ import { TagFilterBar } from './TagFilterBar.js'
  * grid. Swapped as one unit so they can never disagree.
  */
 export function GalleryBody(props: {
-  allTags: readonly Tag[]
+  allTags: readonly TagUsage[]
   activeTags: readonly string[]
   untagged: boolean
   matchCount: number
