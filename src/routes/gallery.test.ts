@@ -247,11 +247,12 @@ describe('popular tag chips', () => {
     return chips.find((m) => m[1]?.trim() === name)?.[0] ?? ''
   }
 
-  it('tints a chip green once a tag carries more than ten images', async () => {
+  it('tints a chip green once a tag carries more than ten images (under twenty)', async () => {
     tagImages('popular', 11)
     const body = await (await gallery.request('/')).text()
 
     expect(chipFor(body, 'popular')).toContain('bg-accent/15')
+    expect(chipFor(body, 'popular')).not.toContain('bg-amber-200')
   })
 
   it('leaves a chip untinted at exactly ten images', async () => {
@@ -260,6 +261,16 @@ describe('popular tag chips', () => {
 
     // "More than 10" -- ten itself is not enough.
     expect(chipFor(body, 'borderline')).not.toContain('bg-accent/15')
+    expect(chipFor(body, 'borderline')).not.toContain('bg-amber-200')
+  })
+
+  it('applies a yellowish gold background once a tag carries twenty or more images', async () => {
+    tagImages('very-popular', 20)
+    const body = await (await gallery.request('/')).text()
+
+    const chip = chipFor(body, 'very-popular')
+    expect(chip).toContain('bg-amber-200')
+    expect(chip).not.toContain('bg-accent/15')
   })
 
   it('keeps the solid accent fill for the selected chip, tinted or not', async () => {
@@ -269,6 +280,15 @@ describe('popular tag chips', () => {
     const chip = chipFor(body, 'popular')
     expect(chip).toContain('bg-accent ')
     expect(chip).not.toContain('bg-accent/15')
+  })
+
+  it('keeps the solid accent fill for a selected chip with twenty or more images', async () => {
+    tagImages('very-popular-selected', 20)
+    const body = await (await gallery.request('/?tag=very-popular-selected')).text()
+
+    const chip = chipFor(body, 'very-popular-selected')
+    expect(chip).toContain('bg-accent ')
+    expect(chip).not.toContain('bg-amber-200')
   })
 })
 
